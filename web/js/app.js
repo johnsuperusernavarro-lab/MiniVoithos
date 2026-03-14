@@ -449,27 +449,33 @@ async function ejecutarPDFs() {
 }
 
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
+function mostrarErrorCarga(msg) {
+  document.getElementById('msg-carga').textContent = msg;
+  document.getElementById('spinner-carga').style.borderTopColor = '#f38ba8';
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+  try {
+    // Navegación: sidebar + tarjetas del inicio
+    document.querySelectorAll('[data-panel]').forEach(btn => {
+      btn.addEventListener('click', () => navegar(btn.dataset.panel));
+    });
 
-  // Navegación: sidebar + tarjetas del inicio
-  document.querySelectorAll('[data-panel]').forEach(btn => {
-    btn.addEventListener('click', () => navegar(btn.dataset.panel));
-  });
+    // Configurar todas las zonas de drop
+    configurarZonas();
 
-  // Configurar todas las zonas de drop
-  configurarZonas();
+    // Botones de acción
+    document.getElementById('btn-auditoria').addEventListener('click',   ejecutarAuditoria);
+    document.getElementById('btn-compras').addEventListener('click',     ejecutarCompras);
+    document.getElementById('btn-retenciones').addEventListener('click', ejecutarRetenciones);
+    document.getElementById('btn-pdfs').addEventListener('click',        ejecutarPDFs);
+    document.getElementById('btn-dl-macro').addEventListener('click',    descargarMacro);
 
-  // Botones de acción
-  document.getElementById('btn-auditoria').addEventListener('click',   ejecutarAuditoria);
-  document.getElementById('btn-compras').addEventListener('click',     ejecutarCompras);
-  document.getElementById('btn-retenciones').addEventListener('click', ejecutarRetenciones);
-  document.getElementById('btn-pdfs').addEventListener('click',        ejecutarPDFs);
-  document.getElementById('btn-dl-macro').addEventListener('click',    descargarMacro);
+  } catch (err) {
+    mostrarErrorCarga(`Error al inicializar UI: ${err.message}`);
+    return;
+  }
 
   // Iniciar Pyodide
-  iniciar().catch(err => {
-    document.getElementById('msg-carga').textContent =
-      `Error al cargar: ${err.message}. Recarga la página.`;
-    document.getElementById('spinner-carga').style.borderTopColor = '#f38ba8';
-  });
+  iniciar().catch(err => mostrarErrorCarga(`Error al cargar: ${err.message}. Recarga la página.`));
 });

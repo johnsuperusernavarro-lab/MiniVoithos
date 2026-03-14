@@ -5,6 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>VOITHOS — Auditor Contable SRI</title>
   <link rel="stylesheet" href="style.css">
+  <!-- Captura errores antes de que app.js cargue -->
+  <script>
+    window.onerror = function(msg, src, line, col, err) {
+      var el = document.getElementById('msg-carga');
+      if (el) el.textContent = 'Error: ' + msg + (src ? ' · ' + src.split('/').pop() + ':' + line : '');
+      var sp = document.getElementById('spinner-carga');
+      if (sp) sp.style.borderTopColor = '#f38ba8';
+    };
+    window.onunhandledrejection = function(e) {
+      var el = document.getElementById('msg-carga');
+      if (el) el.textContent = 'Error async: ' + (e.reason && e.reason.message ? e.reason.message : String(e.reason));
+      var sp = document.getElementById('spinner-carga');
+      if (sp) sp.style.borderTopColor = '#f38ba8';
+    };
+  </script>
   <script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
 </head>
 <body>
