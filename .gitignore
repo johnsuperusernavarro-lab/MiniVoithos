@@ -1,0 +1,63 @@
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# ── Entornos virtuales ────────────────────────────────────────────────────────
+venv/
+.venv/
+env/
+ENV/
+
+# ── Datos contables (nunca subir al repositorio) ──────────────────────────────
+# Carpetas de XMLs y PDFs del cliente
+**/enero*/
+**/febrero*/
+**/marzo*/
+**/abril*/
+**/mayo*/
+**/junio*/
+**/julio*/
+**/agosto*/
+**/septiembre*/
+**/octubre*/
+**/noviembre*/
+**/diciembre*/
+
+# Archivos Excel del sistema contable y reportes generados
+ReporteComprasVentas*.xlsx
+Ventas_Personalizado*.xlsx
+AUDITORIA_*.xlsx
+COMPRAS_*.xlsx
+RETENCIONES_*.xlsx
+
+# Carpeta de salida con reportes y PDFs procesados
+processed_data/
+
+# TXT del SRI (contiene datos del contribuyente)
+*.txt
+!requirements*.txt
+!docs/*.txt
+
+# ── Herramientas de desarrollo ────────────────────────────────────────────────
+.claude/
+temporal/
+
+# ── IDEs ──────────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ── PyInstaller ───────────────────────────────────────────────────────────────
+*.spec.bak
+dist/
+build/

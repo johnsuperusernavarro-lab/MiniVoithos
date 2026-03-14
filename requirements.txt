@@ -1,0 +1,17 @@
+# VOITHOS — Dependencias Python
+# Instalar con: pip install -r requirements.txt
+
+# Manipulación de datos
+pandas>=2.0.0
+
+# Lectura y escritura de archivos Excel
+openpyxl>=3.1.0
+
+# Interfaz gráfica (widgets modernos para Tkinter)
+customtkinter>=5.2.0
+
+# Soporte drag & drop para la GUI
+tkinterdnd2>=0.3.0
+
+# Compilación a ejecutable standalone (opcional)
+# pyinstaller>=6.0.0
