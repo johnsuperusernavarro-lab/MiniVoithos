@@ -42,12 +42,12 @@ async function iniciar() {
   pyodide = await loadPyodide({ indexURL: PYODIDE_URL });
   setProgreso('Cargando librerías de datos...', 35);
 
-  await pyodide.loadPackage(['pandas', 'openpyxl', 'micropip']);
-  setProgreso('Instalando módulos auxiliares...', 60);
+  await pyodide.loadPackage(['pandas', 'micropip']);
+  setProgreso('Instalando openpyxl y defusedxml...', 60);
 
   await pyodide.runPythonAsync(`
 import micropip
-await micropip.install('defusedxml')
+await micropip.install(['openpyxl', 'defusedxml'])
   `);
   setProgreso('Cargando módulos de VOITHOS...', 75);
 
