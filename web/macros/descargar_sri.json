@@ -1,0 +1,66 @@
+{
+  "Name": "descargar ret",
+  "CreationDate": "2026-3-14",
+  "Commands": [
+    {
+      "Command": "store",
+      "Target": "1",
+      "Value": "row",
+      "Description": ""
+    },
+    {
+      "Command": "while",
+      "Target": "${row} <= 50",
+      "Value": "",
+      "Description": ""
+    },
+    {
+      "Command": "verifyElementPresent",
+      "Target": "xpath=//table/tbody/tr[${row}]/td[10]//a",
+      "Value": "",
+      "Description": ""
+    },
+    {
+      "Command": "click",
+      "Target": "xpath=//table/tbody/tr[${row}]/td[10]//a",
+      "Value": "",
+      "Description": ""
+    },
+    {
+      "Command": "pause",
+      "Target": "2000",
+      "Value": "",
+      "Description": ""
+    },
+    {
+      "Command": "verifyElementPresent",
+      "Target": "xpath=//table/tbody/tr[${row}]/td[11]//a",
+      "Value": "",
+      "Description": ""
+    },
+    {
+      "Command": "click",
+      "Target": "xpath=//table/tbody/tr[${row}]/td[11]//a",
+      "Value": "",
+      "Description": ""
+    },
+    {
+      "Command": "pause",
+      "Target": "2000",
+      "Value": "",
+      "Description": ""
+    },
+    {
+      "Command": "executeScript_Sandbox",
+      "Target": "return Number(${row}) + 1;",
+      "Value": "row",
+      "Description": ""
+    },
+    {
+      "Command": "endWhile",
+      "Target": "",
+      "Value": "",
+      "Description": ""
+    }
+  ]
+}

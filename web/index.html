@@ -42,6 +42,9 @@
       <button class="nav-btn" data-panel="pdfs">
         <span class="nav-icon">📁</span><span class="nav-label">Organizar PDFs</span>
       </button>
+      <button class="nav-btn" data-panel="descarga">
+        <span class="nav-icon">⬇️</span><span class="nav-label">Descargar del SRI</span>
+      </button>
     </div>
     <div class="sidebar-footer">v2.0 web · SRI Ecuador</div>
   </nav>
@@ -102,6 +105,18 @@
             <ul class="card-archivos">
               <li>ZIP con XMLs + PDFs de facturas</li>
               <li>ZIP con XMLs + PDFs de retenciones</li>
+            </ul>
+          </div>
+        </button>
+
+        <button class="inicio-card teal" data-panel="descarga">
+          <span class="card-icon">⬇️</span>
+          <div class="card-info">
+            <h3>Descargar del SRI</h3>
+            <p>Automatiza la descarga de comprobantes del portal SRI con Firefox + UI.Vision (gratis).</p>
+            <ul class="card-archivos">
+              <li>Macro listo para importar</li>
+              <li>Instrucciones paso a paso</li>
             </ul>
           </div>
         </button>
@@ -308,6 +323,117 @@
         <div id="pdf-descargas"></div>
         <div class="advertencias" id="adv-pdfs" style="display:none"><ul></ul></div>
       </div>
+    </div>
+
+    <!-- ── PANEL: DESCARGAR DEL SRI ───────────────────────────────────────── -->
+    <div class="panel" id="panel-descarga">
+      <h1 class="panel-titulo">⬇️ Descargar del SRI</h1>
+      <p class="panel-subtitulo">
+        Automatiza la descarga masiva de comprobantes desde el portal del SRI usando
+        <strong>Firefox</strong> y la extensión gratuita <strong>UI.Vision</strong>.
+        No necesitas pagar nada ni instalar software adicional.
+      </p>
+
+      <div class="seccion">
+        <h3 class="seccion-h">Paso 1 — Instalar UI.Vision en Firefox</h3>
+        <div class="descarga-pasos">
+          <div class="paso">
+            <div class="paso-num">1</div>
+            <div class="paso-texto">
+              Abre Firefox y busca <strong>UI.Vision RPA</strong> en el catálogo de extensiones
+              de Mozilla (<code>addons.mozilla.org</code>). Instálala normalmente.
+            </div>
+          </div>
+          <div class="paso">
+            <div class="paso-num">2</div>
+            <div class="paso-texto">
+              Haz clic en el icono de UI.Vision en la barra de herramientas de Firefox para
+              abrirla. La primera vez te pedirá permisos para acceder a las páginas.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="seccion">
+        <h3 class="seccion-h">Paso 2 — Importar el macro</h3>
+        <div class="descarga-pasos">
+          <div class="paso">
+            <div class="paso-num">3</div>
+            <div class="paso-texto">
+              Descarga el macro haciendo clic en el botón de abajo. Es un archivo <code>.json</code>
+              que contiene las instrucciones de automatización.
+            </div>
+          </div>
+          <div class="paso">
+            <div class="paso-num">4</div>
+            <div class="paso-texto">
+              En UI.Vision, ve a <strong>Macros → Import</strong> y selecciona el archivo
+              <code>descargar_sri.json</code> que descargaste.
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:1rem;">
+          <button class="btn-accion teal" id="btn-dl-macro">⬇ Descargar macro JSON</button>
+        </div>
+      </div>
+
+      <div class="seccion">
+        <h3 class="seccion-h">Paso 3 — Ejecutar en el portal SRI</h3>
+        <div class="descarga-pasos">
+          <div class="paso">
+            <div class="paso-num">5</div>
+            <div class="paso-texto">
+              Inicia sesión en el portal del SRI (<code>sri.gob.ec</code>) y navega a
+              <strong>Comprobantes Electrónicos → Recibidos</strong> (o a Emitidos, según corresponda).
+              Aplica el filtro del mes que necesitas.
+            </div>
+          </div>
+          <div class="paso">
+            <div class="paso-num">6</div>
+            <div class="paso-texto">
+              Asegúrate de que la tabla esté visible con sus 50 filas. Luego abre UI.Vision,
+              selecciona el macro <strong>descargar_sri</strong> y presiona <strong>Play</strong>.
+            </div>
+          </div>
+          <div class="paso">
+            <div class="paso-num">7</div>
+            <div class="paso-texto">
+              El macro hará clic automáticamente en la columna 10 (XML) y columna 11 (PDF)
+              de cada fila, con una pausa de 2 segundos entre descargas. No toques el ratón
+              mientras se ejecuta.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="seccion">
+        <h3 class="seccion-h">Notas importantes</h3>
+        <div class="descarga-pasos">
+          <div class="paso">
+            <div class="paso-num">⚡</div>
+            <div class="paso-texto">
+              <strong>Funciona para facturas Y retenciones.</strong> El macro es el mismo:
+              simplemente ejecútalo en la sección que corresponda dentro del portal.
+            </div>
+          </div>
+          <div class="paso">
+            <div class="paso-num">50</div>
+            <div class="paso-texto">
+              <strong>Límite de 50 filas por página.</strong> El portal del SRI solo muestra
+              50 comprobantes a la vez. Si tienes más, cambia manualmente de página y
+              vuelve a ejecutar el macro.
+            </div>
+          </div>
+          <div class="paso">
+            <div class="paso-num">📁</div>
+            <div class="paso-texto">
+              Los archivos se descargarán a tu carpeta de descargas de Firefox.
+              Luego puedes subirlos directamente a VOITHOS o comprimirlos en un ZIP.
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
 
   </main>

@@ -221,6 +221,7 @@ body {
 .inicio-card.verde:hover  { border-color: var(--green); }
 .inicio-card.mauve:hover  { border-color: var(--mauve); }
 .inicio-card.peach:hover  { border-color: var(--peach); }
+.inicio-card.teal:hover   { border-color: var(--teal);  }
 
 .card-icon { font-size: 1.8rem; flex-shrink: 0; line-height: 1; margin-top: .1rem; }
 
@@ -341,6 +342,7 @@ input[type="file"] { display: none; }
 .btn-accion.verde { background: var(--green); color: var(--crust); }
 .btn-accion.mauve { background: var(--mauve); color: var(--crust); }
 .btn-accion.peach { background: var(--peach); color: var(--crust); }
+.btn-accion.teal  { background: var(--teal);  color: var(--crust); }
 
 .btn-accion:hover:not(:disabled) { filter: brightness(1.1); transform: translateY(-1px); }
 
@@ -467,6 +469,52 @@ input[type="file"] { display: none; }
 }
 .advertencias ul { padding-left: 1.1rem; }
 .advertencias li { margin: .18rem 0; }
+
+/* ── Panel Descargar SRI ─────────────────────────────────────────────────── */
+.descarga-pasos {
+  display: flex;
+  flex-direction: column;
+  gap: .7rem;
+}
+
+.paso {
+  display: flex;
+  gap: .9rem;
+  align-items: flex-start;
+}
+
+.paso-num {
+  min-width: 28px;
+  height: 28px;
+  background: var(--surface1);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .78rem;
+  font-weight: 700;
+  color: var(--teal);
+  flex-shrink: 0;
+  margin-top: .1rem;
+}
+
+.paso-texto {
+  font-size: .85rem;
+  color: var(--subtext1);
+  line-height: 1.55;
+}
+
+.paso-texto code {
+  background: var(--surface0);
+  color: var(--teal);
+  padding: .1rem .35rem;
+  border-radius: 4px;
+  font-size: .8rem;
+}
+
+.paso-texto strong {
+  color: var(--text);
+}
 
 /* ── Responsive ──────────────────────────────────────────────────────────── */
 @media (max-width: 640px) {

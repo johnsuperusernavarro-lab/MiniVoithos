@@ -273,6 +273,17 @@ function fechaHoy() {
   return new Date().toISOString().slice(0,10).replace(/-/g,'');
 }
 
+// ── Descargar macro UI.Vision ─────────────────────────────────────────────────
+async function descargarMacro() {
+  const resp = await fetch('macros/descargar_sri.json');
+  if (!resp.ok) { alert('No se pudo cargar el macro.'); return; }
+  const blob = await resp.blob();
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = 'descargar_sri.json'; a.click();
+  URL.revokeObjectURL(url);
+}
+
 // ── Auditoría Mensual ─────────────────────────────────────────────────────────
 async function ejecutarAuditoria() {
   const a = archivos.auditoria;
@@ -453,6 +464,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-compras').addEventListener('click',     ejecutarCompras);
   document.getElementById('btn-retenciones').addEventListener('click', ejecutarRetenciones);
   document.getElementById('btn-pdfs').addEventListener('click',        ejecutarPDFs);
+  document.getElementById('btn-dl-macro').addEventListener('click',    descargarMacro);
 
   // Iniciar Pyodide
   iniciar().catch(err => {
