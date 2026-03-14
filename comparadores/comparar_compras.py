@@ -79,8 +79,12 @@ def comparar_compras(df_xml, df_txt, df_sys):
             'TOTAL': 'TOTAL_SIS',
         })
         merged = df_xml.merge(df_sys_r, on='CLAVE', how='left')
-        merged['TOTAL_SIS'] = pd.to_numeric(merged.get('TOTAL_SIS', 0), errors='coerce').fillna(0)
-        merged['TOTAL']     = pd.to_numeric(merged.get('TOTAL',     0), errors='coerce').fillna(0)
+        if 'TOTAL_SIS' not in merged.columns:
+            merged['TOTAL_SIS'] = 0.0
+        if 'TOTAL' not in merged.columns:
+            merged['TOTAL'] = 0.0
+        merged['TOTAL_SIS'] = pd.to_numeric(merged['TOTAL_SIS'], errors='coerce').fillna(0)
+        merged['TOTAL']     = pd.to_numeric(merged['TOTAL'],     errors='coerce').fillna(0)
         merged['DIF_TOTAL'] = merged['TOTAL'] - merged['TOTAL_SIS']
 
         coincidencias = merged[merged['CLAVE'].isin(en_todos)].rename(columns={
@@ -93,7 +97,17 @@ def comparar_compras(df_xml, df_txt, df_sys):
             'DIF_TOTAL':    'Diferencia',
             'CLAVE_ACCESO': 'Clave Acceso',
         })
-        no_en_sis_df  = merged[merged['CLAVE'].isin(no_en_sistema)]
+
+        # Facturas no en sistema: incluir tanto las del XML como las del TXT
+        # (el merge solo cubre XMLs; las claves solo en TXT se añaden desde df_txt)
+        no_en_sis_xml = merged[merged['CLAVE'].isin(no_en_sistema)]
+        if not df_txt.empty and 'CLAVE' in df_txt.columns:
+            claves_solo_txt = no_en_sistema - claves_xml
+            no_en_sis_txt   = df_txt[df_txt['CLAVE'].isin(claves_solo_txt)].copy()
+            no_en_sis_df    = pd.concat([no_en_sis_xml, no_en_sis_txt], ignore_index=True)
+        else:
+            no_en_sis_df = no_en_sis_xml
+
         solo_sis_df   = (df_sys[df_sys['CLAVE'].isin(solo_en_sistema)]
                          if 'CLAVE' in df_sys.columns else pd.DataFrame())
     else:

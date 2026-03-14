@@ -91,7 +91,9 @@ def cargar_sistema(path):
                       if c is not None and len(str(c).strip()) <= 30]
         if compras_inicio is None and any(m == 'COMPRAS' or m.startswith('COMPRAS') for m in marcadores):
             compras_inicio = i
-        if any(m == 'VENTAS' or m.startswith('VENTAS') for m in marcadores):
+        # Solo tomar el PRIMER marcador VENTAS después de COMPRAS para evitar
+        # que descripciones de datos con la palabra "VENTAS" desplacen el índice
+        if ventas_inicio is None and any(m == 'VENTAS' or m.startswith('VENTAS') for m in marcadores):
             ventas_inicio = i
 
     if compras_inicio is None:
@@ -219,6 +221,8 @@ def _seccion_a_df(filas, nombre_archivo=""):
             continue
         convertido = pd.to_numeric(serie, errors='coerce')
         if convertido.notna().sum() >= len(df) * 0.5:
-            df.iloc[:, idx] = convertido.where(convertido.notna(), serie)
+            # fillna(0) mantiene tipo uniforme float; restaurar strings crearía
+            # columnas mixtas (float + str) que rompen operaciones aritméticas posteriores
+            df.iloc[:, idx] = convertido.fillna(0)
 
     return df

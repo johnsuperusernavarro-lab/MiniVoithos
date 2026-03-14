@@ -182,7 +182,7 @@ def cargar_txt_sri(ruta):
     )
     if col_tipo:
         antes_filtro = len(df)
-        df = df[df[col_tipo].astype(str).str.strip().str.lower() == 'factura'].copy()
+        df = df[df[col_tipo].astype(str).str.strip().str.lower().str.startswith('factura')].copy()
         descartados = antes_filtro - len(df)
         if descartados:
             print(f"   ℹ  {descartados} registros no-Factura descartados del TXT SRI "

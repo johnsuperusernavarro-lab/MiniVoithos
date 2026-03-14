@@ -38,7 +38,8 @@ def formatear_num_documento(numero):
     s = str(numero).strip()
     # Quitar prefijos que el sistema contable añade antes del número
     # Ej: "FAC 001-001-034380415" → "001-001-034380415"
-    s = re.sub(r'^[A-Z]{1,5}[\.\s]+', '', s).strip()
+    # Ej: "FAC001-001-034380415"  → "001-001-034380415" (sin separador)
+    s = re.sub(r'^[A-Za-z]{1,5}[\.\s]*', '', s).strip()
     if re.match(r'^\d{15}$', s):
         return f"{s[:3]}-{s[3:6]}-{s[6:]}"
     return s

@@ -91,10 +91,17 @@ def cargar_ventas_personalizado(path):
         ws_tmp = wb_tmp.active
         for i, row in enumerate(ws_tmp.iter_rows(max_row=15, values_only=True)):
             celdas = [str(c).strip().upper() for c in row if c is not None]
-            # Buscar indicadores de fila de cabecera
+            # Buscar celdas que sean exactamente un nombre de columna conocido
+            # (no subcadena), para evitar que nombres de empresa como
+            # "SERVICIOS TOTAL S.A." se confundan con la fila de cabeceras.
             indicadores = {'DOCUMENTO', 'RETENCION', 'RETENCIÓN', 'EMISIÓN',
-                           'EMISION', 'TOTAL', 'SUBTOTAL', 'SOCIAL'}
-            if sum(1 for c in celdas if any(ind in c for ind in indicadores)) >= 2:
+                           'EMISION', 'SUBTOTAL', 'SOCIAL', 'RET IVA', 'RET IR',
+                           'NO_DOCUMENTO', 'FECHA_EMISION', 'RAZON_SOCIAL'}
+            coincidencias = sum(
+                1 for c in celdas
+                if c in indicadores or any(c == ind for ind in indicadores)
+            )
+            if coincidencias >= 2:
                 header_row = i
                 break
         wb_tmp.close()
