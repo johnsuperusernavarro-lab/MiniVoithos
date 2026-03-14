@@ -61,3 +61,7 @@ Thumbs.db
 *.spec.bak
 dist/
 build/
+
+# ── Paquetes de distribución ───────────────────────────────────────────────────
+*.zip
+!docs/*.zip
