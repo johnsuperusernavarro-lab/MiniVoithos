@@ -1,87 +1,81 @@
 // ── Constantes ────────────────────────────────────────────────────────────────
 const PYODIDE_URL = 'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/';
-const TMP_DIR     = '/tmp/voithos';
+const TMP         = '/tmp/voithos';
 
-// Módulos Python a cargar en el filesystem virtual de Pyodide (orden de dependencias)
 const MODULOS_PYTHON = [
   'config.py',
-  'util/__init__.py',
-  'util/normalizacion.py',
-  'util/validacion.py',
-  'util/logger.py',
-  'util/archivos.py',
-  'parsers/__init__.py',
-  'parsers/facturas_xml.py',
-  'parsers/retenciones_xml.py',
-  'parsers/sri_txt.py',
-  'loaders/__init__.py',
-  'loaders/sistema_excel.py',
+  'util/__init__.py', 'util/normalizacion.py', 'util/validacion.py',
+  'util/logger.py',   'util/archivos.py',
+  'parsers/__init__.py', 'parsers/facturas_xml.py',
+  'parsers/retenciones_xml.py', 'parsers/sri_txt.py',
+  'loaders/__init__.py', 'loaders/sistema_excel.py',
   'loaders/ventas_personalizado.py',
-  'comparadores/__init__.py',
-  'comparadores/comparar_compras.py',
+  'comparadores/__init__.py', 'comparadores/comparar_compras.py',
   'comparadores/comparar_retenciones.py',
-  'reportes/__init__.py',
-  'reportes/generar_excel.py',
+  'reportes/__init__.py', 'reportes/generar_excel.py',
   'voithos_web.py',
 ];
 
-// ── Estado de la aplicación ───────────────────────────────────────────────────
-let pyodide   = null;
-let archivos  = {
-  facturas:    [],   // [{name, bytes}]
-  retenciones: [],
-  sistema:     null, // {name, bytes}
-  txt:         null,
-  ventas:      null,
+// ── Estado por herramienta ────────────────────────────────────────────────────
+const archivos = {
+  auditoria:   { facturas: [], retenciones: [], sistema: null, txt: null, ventas: null },
+  compras:     { facturas: [], sistema: null, txt: null },
+  retenciones: { retenciones: [], ventas: null },
+  pdfs:        { facturas: [], retenciones: [] },
 };
+
+// Qué campos son obligatorios para habilitar el botón de cada herramienta
+const REQUERIDOS = {
+  auditoria:   a => a.facturas.length > 0 && a.sistema !== null,
+  compras:     a => a.facturas.length > 0 && a.sistema !== null,
+  retenciones: a => a.retenciones.length > 0 && a.ventas !== null,
+  pdfs:        a => a.facturas.length > 0 || a.retenciones.length > 0,
+};
+
+let pyodide = null;
 
 // ── Inicialización ────────────────────────────────────────────────────────────
 async function iniciar() {
-  setProgreso('Cargando intérprete Python (primera vez puede tardar ~20 s)...', 10);
-
+  setProgreso('Cargando intérprete Python…', 10);
   pyodide = await loadPyodide({ indexURL: PYODIDE_URL });
-  setProgreso('Cargando librerías de datos...', 35);
 
+  setProgreso('Cargando pandas…', 35);
   await pyodide.loadPackage(['pandas', 'micropip']);
-  setProgreso('Instalando openpyxl y defusedxml...', 60);
 
+  setProgreso('Instalando openpyxl y defusedxml…', 60);
   await pyodide.runPythonAsync(`
 import micropip
 await micropip.install(['openpyxl', 'defusedxml'])
   `);
-  setProgreso('Cargando módulos de VOITHOS...', 75);
 
+  setProgreso('Cargando módulos VOITHOS…', 78);
   await cargarModulosPython();
-  setProgreso('Inicializando entorno Python...', 92);
 
-  // Importar voithos_web y dejar el módulo disponible globalmente
+  setProgreso('Inicializando…', 94);
   await pyodide.runPythonAsync(`
 import sys
 sys.path.insert(0, '/home/pyodide')
-from voithos_web import analizar, limpiar_tmp
+from voithos_web import analizar, analizar_compras, analizar_retenciones, organizar_pdfs, limpiar_tmp
   `);
 
   setProgreso('Listo', 100);
-  mostrarApp();
+  setTimeout(mostrarApp, 300);
 }
 
-function setProgreso(mensaje, pct) {
-  document.getElementById('msg-carga').textContent  = mensaje;
+function setProgreso(msg, pct) {
+  document.getElementById('msg-carga').textContent   = msg;
   document.getElementById('barra-carga').style.width = `${pct}%`;
 }
 
 async function cargarModulosPython() {
-  // Crear subdirectorios en el filesystem virtual de Pyodide
   const subdirs = ['parsers', 'loaders', 'comparadores', 'reportes', 'util'];
   for (const d of subdirs) {
     try { pyodide.FS.mkdir(`/home/pyodide/${d}`); } catch (_) {}
   }
-
   for (const mod of MODULOS_PYTHON) {
     const resp = await fetch(`py/${mod}`);
-    if (!resp.ok) throw new Error(`No se pudo cargar módulo Python: py/${mod}`);
-    const code = await resp.text();
-    pyodide.FS.writeFile(`/home/pyodide/${mod}`, code, { encoding: 'utf8' });
+    if (!resp.ok) throw new Error(`No se pudo cargar py/${mod} (${resp.status})`);
+    pyodide.FS.writeFile(`/home/pyodide/${mod}`, await resp.text(), { encoding: 'utf8' });
   }
 }
 
@@ -90,256 +84,375 @@ function mostrarApp() {
   document.getElementById('app').hidden = false;
 }
 
-// ── Zonas de drag & drop ──────────────────────────────────────────────────────
-function configurarZona(idZona, idInput, tipoArchivo) {
-  const zona  = document.getElementById(idZona);
-  const input = document.getElementById(idInput);
+// ── Navegación ────────────────────────────────────────────────────────────────
+function navegar(panel) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById(`panel-${panel}`).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll(`[data-panel="${panel}"]`).forEach(b => b.classList.add('active'));
+}
 
-  // Click para abrir selector de archivos
-  zona.addEventListener('click', () => input.click());
+// ── Zonas de drop ─────────────────────────────────────────────────────────────
+function configurarZonas() {
+  document.querySelectorAll('.zona-drop').forEach(zona => {
+    const tool = zona.dataset.tool;
+    const tipo = zona.dataset.tipo;
+    const inputId = zona.querySelector('input[type="file"]').id;
+    const input   = document.getElementById(inputId);
 
-  // Drag & drop
-  zona.addEventListener('dragover', e => {
-    e.preventDefault();
-    zona.classList.add('drag-over');
-  });
-  zona.addEventListener('dragleave', () => zona.classList.remove('drag-over'));
-  zona.addEventListener('drop', e => {
-    e.preventDefault();
-    zona.classList.remove('drag-over');
-    procesarArchivosZona(e.dataTransfer.files, tipoArchivo);
-  });
+    zona.addEventListener('click', () => input.click());
 
-  // Selector de archivos
-  input.addEventListener('change', () => {
-    procesarArchivosZona(input.files, tipoArchivo);
-    input.value = '';  // reset para permitir re-selección del mismo archivo
+    zona.addEventListener('dragover', e => { e.preventDefault(); zona.classList.add('drag-over'); });
+    zona.addEventListener('dragleave', () => zona.classList.remove('drag-over'));
+    zona.addEventListener('drop', e => {
+      e.preventDefault();
+      zona.classList.remove('drag-over');
+      manejarArchivos(e.dataTransfer.files, tool, tipo, zona);
+    });
+
+    input.addEventListener('change', () => {
+      manejarArchivos(input.files, tool, tipo, zona);
+      input.value = '';
+    });
   });
 }
 
-async function procesarArchivosZona(fileList, tipo) {
+async function manejarArchivos(fileList, tool, tipo, zona) {
   if (!fileList || fileList.length === 0) return;
 
-  const archivosLeidos = [];
+  const leidos = [];
   for (const file of fileList) {
-    const bytes = new Uint8Array(await file.arrayBuffer());
-    archivosLeidos.push({ name: file.name, bytes });
+    leidos.push({ name: file.name, bytes: new Uint8Array(await file.arrayBuffer()) });
   }
 
-  const zona = document.getElementById(`zona-${tipo}`);
-  const estadoEl = zona.querySelector('.zona-estado');
+  const estado = zona.querySelector('.zona-estado');
 
-  switch (tipo) {
-    case 'facturas':
-      archivos.facturas = archivosLeidos;
-      estadoEl.textContent = resumenArchivos(archivosLeidos, 'xml', 'zip');
-      break;
-    case 'retenciones':
-      archivos.retenciones = archivosLeidos;
-      estadoEl.textContent = resumenArchivos(archivosLeidos, 'xml', 'zip');
-      break;
-    case 'sistema':
-      archivos.sistema = archivosLeidos[0];
-      estadoEl.textContent = archivosLeidos[0].name;
-      break;
-    case 'txt':
-      archivos.txt = archivosLeidos[0];
-      estadoEl.textContent = archivosLeidos[0].name;
-      break;
-    case 'ventas':
-      archivos.ventas = archivosLeidos[0];
-      estadoEl.textContent = archivosLeidos[0].name;
-      break;
+  // Tipos múltiples (XMLs/ZIPs)
+  if (tipo === 'facturas' || tipo === 'retenciones') {
+    archivos[tool][tipo] = leidos;
+    estado.textContent = leidos.length === 1 && leidos[0].name.endsWith('.zip')
+      ? `ZIP: ${leidos[0].name}`
+      : `${leidos.length} archivo${leidos.length !== 1 ? 's' : ''}`;
+  } else {
+    // Archivo único
+    archivos[tool][tipo] = leidos[0];
+    estado.textContent   = leidos[0].name;
   }
 
   zona.classList.add('tiene-archivo');
-  actualizarBoton();
+  actualizarBoton(tool);
 }
 
-function resumenArchivos(lista, ...exts) {
-  const xmls = lista.filter(f => exts.some(e => f.name.toLowerCase().endsWith(e)));
-  if (xmls.length === 1 && xmls[0].name.toLowerCase().endsWith('.zip')) {
-    return `ZIP: ${xmls[0].name}`;
-  }
-  return `${lista.length} archivo${lista.length !== 1 ? 's' : ''}`;
+function actualizarBoton(tool) {
+  const btn = document.getElementById(`btn-${tool}`);
+  if (btn) btn.disabled = !REQUERIDOS[tool](archivos[tool]);
 }
 
-function actualizarBoton() {
-  const listo = archivos.facturas.length > 0 && archivos.sistema !== null;
-  document.getElementById('btn-analizar').disabled = !listo;
-}
-
-// ── Análisis ──────────────────────────────────────────────────────────────────
-async function ejecutarAnalisis() {
-  ocultarError();
-  ocultarResultados();
-  mostrarProcesando(true);
-
-  try {
-    // Limpiar directorio temporal anterior
-    await pyodide.runPythonAsync(`
+// ── Escritura al filesystem virtual de Pyodide ────────────────────────────────
+async function prepararTmp() {
+  await pyodide.runPythonAsync(`
 import os, shutil
-shutil.rmtree('/tmp/voithos', ignore_errors=True)
-os.makedirs('/tmp/voithos', exist_ok=True)
-    `);
-
-    // Escribir facturas en el filesystem virtual
-    await escribirXmls(archivos.facturas, 'facturas');
-
-    // Escribir retenciones
-    await escribirXmls(archivos.retenciones, 'retenciones');
-
-    // Escribir sistema contable
-    if (archivos.sistema) {
-      pyodide.FS.writeFile(`${TMP_DIR}/sistema.xlsx`, archivos.sistema.bytes);
-    }
-
-    // Escribir TXT SRI
-    if (archivos.txt) {
-      pyodide.FS.writeFile(`${TMP_DIR}/comprobantes.txt`, archivos.txt.bytes);
-    }
-
-    // Escribir Ventas personalizado
-    if (archivos.ventas) {
-      pyodide.FS.writeFile(`${TMP_DIR}/ventas.xlsx`, archivos.ventas.bytes);
-    }
-
-    // Llamar al análisis Python
-    const analizar = pyodide.globals.get('analizar');
-    const resultado = analizar(
-      archivos.facturas.length > 0,
-      archivos.retenciones.length > 0,
-      archivos.sistema !== null,
-      archivos.txt !== null,
-      archivos.ventas !== null,
-    );
-
-    const excelB64     = resultado.get('excel_b64');
-    const statsCompras = resultado.get('stats_compras').toJs();
-    const statsRet     = resultado.get('stats_ret').toJs();
-    const advertencias = resultado.get('advertencias').toJs();
-
-    resultado.destroy();
-
-    // Mostrar resultados
-    mostrarResultados(statsCompras, statsRet, advertencias, excelB64);
-
-  } catch (err) {
-    mostrarError(err.message || String(err));
-  } finally {
-    mostrarProcesando(false);
-  }
+shutil.rmtree('${TMP}', ignore_errors=True)
+os.makedirs('${TMP}', exist_ok=True)
+  `);
 }
 
-async function escribirXmls(lista, tipo) {
+function escribirXmls(lista, tipo) {
   if (!lista || lista.length === 0) return;
-
   const esZip = lista.length === 1 && lista[0].name.toLowerCase().endsWith('.zip');
-
   if (esZip) {
-    pyodide.FS.writeFile(`${TMP_DIR}/${tipo}.zip`, lista[0].bytes);
+    pyodide.FS.writeFile(`${TMP}/${tipo}.zip`, lista[0].bytes);
   } else {
-    try {
-      pyodide.FS.mkdir(`${TMP_DIR}/${tipo}`);
-    } catch (_) {}
+    try { pyodide.FS.mkdir(`${TMP}/${tipo}`); } catch (_) {}
     for (const { name, bytes } of lista) {
       if (name.toLowerCase().endsWith('.xml')) {
-        pyodide.FS.writeFile(`${TMP_DIR}/${tipo}/${name}`, bytes);
+        pyodide.FS.writeFile(`${TMP}/${tipo}/${name}`, bytes);
       }
     }
   }
 }
 
-// ── UI helpers ────────────────────────────────────────────────────────────────
-function mostrarProcesando(activo) {
-  document.getElementById('procesando').style.display      = activo ? 'flex' : 'none';
-  document.getElementById('btn-analizar').style.display    = activo ? 'none' : '';
+function escribirArchivo(obj, nombre) {
+  if (obj) pyodide.FS.writeFile(`${TMP}/${nombre}`, obj.bytes);
 }
 
-function mostrarError(msg) {
-  const el = document.getElementById('panel-error');
-  el.textContent = `Error: ${msg}`;
+// ── Helpers de UI ─────────────────────────────────────────────────────────────
+function mostrarProcesando(tool, activo) {
+  document.getElementById(`proc-${tool}`).style.display = activo ? 'flex' : 'none';
+  document.getElementById(`btn-${tool}`).style.display  = activo ? 'none' : '';
+}
+
+function mostrarError(tool, msg) {
+  const el = document.getElementById(`err-${tool}`);
+  el.textContent    = `Error: ${msg}`;
+  el.style.display  = 'block';
+  document.getElementById(`res-${tool}`).style.display = 'none';
+}
+
+function ocultarError(tool) {
+  document.getElementById(`err-${tool}`).style.display = 'none';
+}
+
+function mostrarAdvertencias(tool, lista) {
+  const el = document.getElementById(`adv-${tool}`);
+  if (!lista || lista.length === 0) { el.style.display = 'none'; return; }
+  const ul = el.querySelector('ul');
+  ul.innerHTML = '';
+  lista.forEach(adv => { const li = document.createElement('li'); li.textContent = adv; ul.appendChild(li); });
   el.style.display = 'block';
 }
 
-function ocultarError() {
-  document.getElementById('panel-error').style.display = 'none';
+function statsCard(titulo, filas) {
+  const card = document.createElement('div');
+  card.className = 'stats-card';
+  card.innerHTML = `<h4>${titulo}</h4>` + filas.map(([lbl, val, cls]) =>
+    `<div class="stat-linea"><span>${lbl}</span>
+     <span class="stat-val ${val > 0 && cls === 'alerta' ? 'alerta' : cls}">${val ?? 0}</span></div>`
+  ).join('');
+  return card;
 }
 
-function ocultarResultados() {
-  document.getElementById('resultados').style.display = 'none';
-}
+function renderStats(containerId, statsC, statsR) {
+  const cont = document.getElementById(containerId);
+  cont.innerHTML = '';
 
-function mostrarResultados(statsC, statsR, advertencias, excelB64) {
-  // Stats de compras
-  const sc = estadoCompras => document.getElementById(estadoCompras);
-
-  setValue('sc-xml',      statsC.get?.('xml')             ?? statsC['xml']             ?? 0, 'normal');
-  setValue('sc-sistema',  statsC.get?.('sistema')         ?? statsC['sistema']         ?? 0, 'normal');
-  setValue('sc-txt',      statsC.get?.('txt')             ?? statsC['txt']             ?? 0, 'normal');
-  setValue('sc-todos',    statsC.get?.('en_todos')        ?? statsC['en_todos']        ?? 0, 'ok');
-  setValue('sc-falta',    statsC.get?.('no_en_sistema')   ?? statsC['no_en_sistema']   ?? 0, 'alerta');
-  setValue('sc-extra',    statsC.get?.('solo_en_sistema') ?? statsC['solo_en_sistema'] ?? 0, 'alerta');
-
-  // Stats de retenciones
-  setValue('sr-xml',      statsR.get?.('ret_xml')    ?? statsR['ret_xml']    ?? 0, 'normal');
-  setValue('sr-vp',       statsR.get?.('vp_con_ret') ?? statsR['vp_con_ret'] ?? 0, 'normal');
-  setValue('sr-todos',    statsR.get?.('en_ambos')   ?? statsR['en_ambos']   ?? 0, 'ok');
-  setValue('sr-falta',    statsR.get?.('sin_sistema')?? statsR['sin_sistema']?? 0, 'alerta');
-  setValue('sr-extra',    statsR.get?.('sin_xml')    ?? statsR['sin_xml']    ?? 0, 'alerta');
-
-  // Advertencias
-  const panelAdv = document.getElementById('advertencias');
-  if (advertencias && advertencias.length > 0) {
-    const ul = panelAdv.querySelector('ul');
-    ul.innerHTML = '';
-    for (const adv of advertencias) {
-      const li = document.createElement('li');
-      li.textContent = adv;
-      ul.appendChild(li);
-    }
-    panelAdv.style.display = 'block';
-  } else {
-    panelAdv.style.display = 'none';
+  if (statsC && Object.keys(statsC).length > 0) {
+    cont.appendChild(statsCard('Compras', [
+      ['XMLs descargados',          statsC.xml             ?? 0, 'normal'],
+      ['En Sistema',                statsC.sistema         ?? 0, 'normal'],
+      ['En TXT SRI',                statsC.txt             ?? 0, 'normal'],
+      ['Coinciden en los 3',        statsC.en_todos        ?? 0, 'ok'],
+      ['En SRI pero NO en Sistema', statsC.no_en_sistema   ?? 0, 'alerta'],
+      ['Solo en Sistema',           statsC.solo_en_sistema ?? 0, 'alerta'],
+    ]));
   }
 
-  // Botón de descarga
-  document.getElementById('btn-descargar').onclick = () => descargarExcel(excelB64);
-
-  document.getElementById('resultados').style.display = 'block';
-  document.getElementById('resultados').scrollIntoView({ behavior: 'smooth' });
+  if (statsR && Object.keys(statsR).length > 0) {
+    cont.appendChild(statsCard('Retenciones', [
+      ['XMLs de retención',            statsR.ret_xml    ?? 0, 'normal'],
+      ['Ventas con retención en Sist.', statsR.vp_con_ret ?? 0, 'normal'],
+      ['Coinciden',                    statsR.en_ambos   ?? 0, 'ok'],
+      ['XML sin registro en Sistema',  statsR.sin_sistema ?? 0, 'alerta'],
+      ['Sistema sin XML de respaldo',  statsR.sin_xml    ?? 0, 'alerta'],
+    ]));
+  }
 }
 
-function setValue(id, valor, clase) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  el.textContent = valor;
-  el.className   = `stat-valor ${valor > 0 && clase === 'alerta' ? 'alerta' : clase}`;
+function pyDictToJs(proxy) {
+  // Convierte PyProxy de dict a objeto JS plano
+  const obj = {};
+  try {
+    proxy.toJs().forEach((v, k) => { obj[k] = (v && typeof v.toJs === 'function') ? Object.fromEntries(v.toJs()) : v; });
+  } catch (_) {}
+  return obj;
 }
 
-function descargarExcel(b64) {
-  const bytes   = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
-  const blob    = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-  const url     = URL.createObjectURL(blob);
-  const a       = document.createElement('a');
-  const fecha   = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-  a.href        = url;
-  a.download    = `AUDITORIA_VOITHOS_${fecha}.xlsx`;
-  a.click();
+function pyListToJs(proxy) {
+  try { return [...proxy.toJs()]; } catch (_) { return []; }
+}
+
+function descargarExcel(b64, nombre) {
+  const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+  const blob  = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url   = URL.createObjectURL(blob);
+  const a     = document.createElement('a');
+  a.href = url; a.download = nombre; a.click();
   URL.revokeObjectURL(url);
+}
+
+function descargarZip(b64, nombre) {
+  const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+  const blob  = new Blob([bytes], { type: 'application/zip' });
+  const url   = URL.createObjectURL(blob);
+  const a     = document.createElement('a');
+  a.href = url; a.download = nombre; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function fechaHoy() {
+  return new Date().toISOString().slice(0,10).replace(/-/g,'');
+}
+
+// ── Auditoría Mensual ─────────────────────────────────────────────────────────
+async function ejecutarAuditoria() {
+  const a = archivos.auditoria;
+  ocultarError('auditoria');
+  mostrarProcesando('auditoria', true);
+
+  try {
+    await prepararTmp();
+    escribirXmls(a.facturas,    'facturas');
+    escribirXmls(a.retenciones, 'retenciones');
+    escribirArchivo(a.sistema,  'sistema.xlsx');
+    escribirArchivo(a.txt,      'comprobantes.txt');
+    escribirArchivo(a.ventas,   'ventas.xlsx');
+
+    const fn = pyodide.globals.get('analizar');
+    const r  = fn(a.facturas.length > 0, a.retenciones.length > 0,
+                  a.sistema !== null, a.txt !== null, a.ventas !== null);
+
+    const b64  = r.get('excel_b64');
+    const sc   = pyDictToJs(r.get('stats_compras'));
+    const sr   = pyDictToJs(r.get('stats_ret'));
+    const adv  = pyListToJs(r.get('advertencias'));
+    r.destroy();
+
+    renderStats('stats-auditoria', sc, sr);
+    mostrarAdvertencias('auditoria', adv);
+    document.getElementById('desc-auditoria').onclick = () =>
+      descargarExcel(b64, `AUDITORIA_VOITHOS_${fechaHoy()}.xlsx`);
+    document.getElementById('res-auditoria').style.display = 'block';
+
+  } catch (e) {
+    mostrarError('auditoria', e.message || String(e));
+  } finally {
+    mostrarProcesando('auditoria', false);
+  }
+}
+
+// ── Solo Compras ──────────────────────────────────────────────────────────────
+async function ejecutarCompras() {
+  const a = archivos.compras;
+  ocultarError('compras');
+  mostrarProcesando('compras', true);
+
+  try {
+    await prepararTmp();
+    escribirXmls(a.facturas,   'facturas');
+    escribirArchivo(a.sistema, 'sistema.xlsx');
+    escribirArchivo(a.txt,     'comprobantes.txt');
+
+    const fn = pyodide.globals.get('analizar_compras');
+    const r  = fn(a.facturas.length > 0, a.sistema !== null, a.txt !== null);
+
+    const b64 = r.get('excel_b64');
+    const sc  = pyDictToJs(r.get('stats_compras'));
+    const adv = pyListToJs(r.get('advertencias'));
+    r.destroy();
+
+    renderStats('stats-compras', sc, null);
+    mostrarAdvertencias('compras', adv);
+    document.getElementById('desc-compras').onclick = () =>
+      descargarExcel(b64, `COMPRAS_VOITHOS_${fechaHoy()}.xlsx`);
+    document.getElementById('res-compras').style.display = 'block';
+
+  } catch (e) {
+    mostrarError('compras', e.message || String(e));
+  } finally {
+    mostrarProcesando('compras', false);
+  }
+}
+
+// ── Solo Retenciones ──────────────────────────────────────────────────────────
+async function ejecutarRetenciones() {
+  const a = archivos.retenciones;
+  ocultarError('retenciones');
+  mostrarProcesando('retenciones', true);
+
+  try {
+    await prepararTmp();
+    escribirXmls(a.retenciones, 'retenciones');
+    escribirArchivo(a.ventas,   'ventas.xlsx');
+
+    const fn = pyodide.globals.get('analizar_retenciones');
+    const r  = fn(a.retenciones.length > 0, a.ventas !== null);
+
+    const b64 = r.get('excel_b64');
+    const sr  = pyDictToJs(r.get('stats_ret'));
+    const adv = pyListToJs(r.get('advertencias'));
+    r.destroy();
+
+    renderStats('stats-retenciones', null, sr);
+    mostrarAdvertencias('retenciones', adv);
+    document.getElementById('desc-retenciones').onclick = () =>
+      descargarExcel(b64, `RETENCIONES_VOITHOS_${fechaHoy()}.xlsx`);
+    document.getElementById('res-retenciones').style.display = 'block';
+
+  } catch (e) {
+    mostrarError('retenciones', e.message || String(e));
+  } finally {
+    mostrarProcesando('retenciones', false);
+  }
+}
+
+// ── Organizar PDFs ────────────────────────────────────────────────────────────
+async function ejecutarPDFs() {
+  const a = archivos.pdfs;
+  ocultarError('pdfs');
+  mostrarProcesando('pdfs', true);
+
+  try {
+    await prepararTmp();
+    escribirXmls(a.facturas,    'facturas');
+    escribirXmls(a.retenciones, 'retenciones');
+
+    const fn = pyodide.globals.get('organizar_pdfs');
+    const r  = fn(a.facturas.length > 0, a.retenciones.length > 0);
+
+    const facZip = r.get('facturas_zip_b64');
+    const retZip = r.get('retenciones_zip_b64');
+    const stats  = pyDictToJs(r.get('stats'));
+    const adv    = pyListToJs(r.get('advertencias'));
+    r.destroy();
+
+    // Mostrar botones de descarga
+    const cont = document.getElementById('pdf-descargas');
+    cont.innerHTML = '';
+
+    if (facZip) {
+      const card = document.createElement('div');
+      card.className = 'pdf-stat-card';
+      const sf = stats.facturas || {};
+      card.innerHTML = `<h4>Facturas</h4>
+        <p>✓ ${sf.copiados ?? 0} renombrados · ${sf.sin_pdf ?? 0} sin PDF · ${sf.errores ?? 0} errores</p>`;
+      const btn = document.createElement('button');
+      btn.className = 'btn-descarga';
+      btn.textContent = '⬇ Descargar ZIP Facturas';
+      btn.onclick = () => descargarZip(facZip, `PDFs_Facturas_${fechaHoy()}.zip`);
+      card.appendChild(btn);
+      cont.appendChild(card);
+    }
+
+    if (retZip) {
+      const card = document.createElement('div');
+      card.className = 'pdf-stat-card';
+      const sr = stats.retenciones || {};
+      card.innerHTML = `<h4>Retenciones</h4>
+        <p>✓ ${sr.copiados ?? 0} renombrados · ${sr.sin_pdf ?? 0} sin PDF · ${sr.errores ?? 0} errores</p>`;
+      const btn = document.createElement('button');
+      btn.className = 'btn-descarga';
+      btn.textContent = '⬇ Descargar ZIP Retenciones';
+      btn.onclick = () => descargarZip(retZip, `PDFs_Retenciones_${fechaHoy()}.zip`);
+      card.appendChild(btn);
+      cont.appendChild(card);
+    }
+
+    mostrarAdvertencias('pdfs', adv);
+    document.getElementById('res-pdfs').style.display = 'block';
+
+  } catch (e) {
+    mostrarError('pdfs', e.message || String(e));
+  } finally {
+    mostrarProcesando('pdfs', false);
+  }
 }
 
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-  // Configurar zonas de drop
-  configurarZona('zona-facturas',    'input-facturas',    'facturas');
-  configurarZona('zona-retenciones', 'input-retenciones', 'retenciones');
-  configurarZona('zona-sistema',     'input-sistema',     'sistema');
-  configurarZona('zona-txt',         'input-txt',         'txt');
-  configurarZona('zona-ventas',      'input-ventas',      'ventas');
 
-  // Botón analizar
-  document.getElementById('btn-analizar').addEventListener('click', ejecutarAnalisis);
+  // Navegación: sidebar + tarjetas del inicio
+  document.querySelectorAll('[data-panel]').forEach(btn => {
+    btn.addEventListener('click', () => navegar(btn.dataset.panel));
+  });
+
+  // Configurar todas las zonas de drop
+  configurarZonas();
+
+  // Botones de acción
+  document.getElementById('btn-auditoria').addEventListener('click',   ejecutarAuditoria);
+  document.getElementById('btn-compras').addEventListener('click',     ejecutarCompras);
+  document.getElementById('btn-retenciones').addEventListener('click', ejecutarRetenciones);
+  document.getElementById('btn-pdfs').addEventListener('click',        ejecutarPDFs);
 
   // Iniciar Pyodide
   iniciar().catch(err => {

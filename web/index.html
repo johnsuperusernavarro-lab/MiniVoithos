@@ -5,208 +5,312 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>VOITHOS — Auditor Contable SRI</title>
   <link rel="stylesheet" href="style.css">
-  <!-- Pyodide: Python en el navegador -->
   <script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
 </head>
 <body>
 
-<!-- ── Header ──────────────────────────────────────────────────────────────── -->
-<header>
-  <div class="logo-texto">
-    <h1>VOITHOS</h1>
-    <p>Auditor Contable SRI · Ecuador</p>
-  </div>
-</header>
-
 <!-- ── Pantalla de carga ────────────────────────────────────────────────────── -->
 <div id="pantalla-carga">
   <div class="spinner" id="spinner-carga"></div>
+  <p class="carga-titulo">VOITHOS</p>
   <p id="msg-carga">Iniciando entorno Python…</p>
-  <div id="barra-carga-wrap">
-    <div id="barra-carga"></div>
-  </div>
-  <p style="font-size:.75rem;color:var(--overlay0);margin-top:.5rem">
-    La primera carga descarga ~25 MB · las siguientes son instantáneas (caché del navegador)
-  </p>
+  <div id="barra-carga-wrap"><div id="barra-carga"></div></div>
+  <p class="carga-nota">Primera carga ~20 s · siguientes son instantáneas (caché)</p>
 </div>
 
-<!-- ── Aplicación ──────────────────────────────────────────────────────────── -->
+<!-- ── App ──────────────────────────────────────────────────────────────────── -->
 <div id="app" hidden>
 
-  <!-- PASO 1: Archivos del SRI -->
-  <section class="seccion">
-    <div class="seccion-titulo">
-      <span class="num">1</span>
-      <h2>Archivos del SRI</h2>
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="sidebar-logo">
+      <span class="logo-v">V</span>OITHOS
     </div>
+    <div class="sidebar-nav">
+      <button class="nav-btn active" data-panel="inicio">
+        <span class="nav-icon">🏠</span><span class="nav-label">Inicio</span>
+      </button>
+      <button class="nav-btn" data-panel="auditoria">
+        <span class="nav-icon">📊</span><span class="nav-label">Auditoría mensual</span>
+      </button>
+      <button class="nav-btn" data-panel="compras">
+        <span class="nav-icon">🛒</span><span class="nav-label">Revisar Compras</span>
+      </button>
+      <button class="nav-btn" data-panel="retenciones">
+        <span class="nav-icon">🔒</span><span class="nav-label">Revisar Retenciones</span>
+      </button>
+      <button class="nav-btn" data-panel="pdfs">
+        <span class="nav-icon">📁</span><span class="nav-label">Organizar PDFs</span>
+      </button>
+    </div>
+    <div class="sidebar-footer">v2.0 web · SRI Ecuador</div>
+  </nav>
 
-    <div class="zonas">
+  <!-- Contenido principal -->
+  <main class="contenido">
 
-      <!-- Facturas (obligatorio) -->
-      <div class="zona-drop" id="zona-facturas" title="XMLs de facturas de compra descargados del portal SRI">
-        <div class="zona-icono">📄</div>
-        <div class="zona-nombre">XMLs de Facturas</div>
-        <div class="zona-hint">ZIP o archivos .xml individuales</div>
-        <div class="zona-estado"></div>
-        <input type="file" id="input-facturas" accept=".xml,.zip" multiple>
+    <!-- ── PANEL: INICIO ──────────────────────────────────────────────────── -->
+    <div class="panel active" id="panel-inicio">
+      <h1 class="panel-titulo">Bienvenido a VOITHOS</h1>
+      <p class="panel-subtitulo">Selecciona la herramienta que necesitas:</p>
+
+      <div class="inicio-grid">
+
+        <button class="inicio-card azul" data-panel="auditoria">
+          <span class="card-icon">📊</span>
+          <div class="card-info">
+            <h3>Auditoría Mensual</h3>
+            <p>Comparación completa: facturas, retenciones y sistema contable. Genera reporte de 7 hojas.</p>
+            <ul class="card-archivos">
+              <li>XMLs Facturas + XMLs Retenciones</li>
+              <li>Sistema contable (.xlsx)</li>
+              <li>TXT del SRI · Ventas personalizado</li>
+            </ul>
+          </div>
+        </button>
+
+        <button class="inicio-card verde" data-panel="compras">
+          <span class="card-icon">🛒</span>
+          <div class="card-info">
+            <h3>Revisar Compras</h3>
+            <p>Detecta facturas de compra que no cuadran entre el SRI y tu sistema contable.</p>
+            <ul class="card-archivos">
+              <li>XMLs de Facturas</li>
+              <li>Sistema contable (.xlsx)</li>
+              <li>TXT del SRI (opcional)</li>
+            </ul>
+          </div>
+        </button>
+
+        <button class="inicio-card mauve" data-panel="retenciones">
+          <span class="card-icon">🔒</span>
+          <div class="card-info">
+            <h3>Revisar Retenciones</h3>
+            <p>Cruza las retenciones recibidas (XMLs) contra las registradas en tu sistema.</p>
+            <ul class="card-archivos">
+              <li>XMLs de Retenciones</li>
+              <li>Ventas_Personalizado (.xlsx)</li>
+            </ul>
+          </div>
+        </button>
+
+        <button class="inicio-card peach" data-panel="pdfs">
+          <span class="card-icon">📁</span>
+          <div class="card-info">
+            <h3>Organizar PDFs</h3>
+            <p>Renombra tus PDFs usando el número oficial del comprobante extraído del XML.</p>
+            <ul class="card-archivos">
+              <li>ZIP con XMLs + PDFs de facturas</li>
+              <li>ZIP con XMLs + PDFs de retenciones</li>
+            </ul>
+          </div>
+        </button>
+
       </div>
-
-      <!-- Retenciones (opcional pero recomendado) -->
-      <div class="zona-drop" id="zona-retenciones" title="XMLs de retenciones recibidas desde el portal SRI">
-        <div class="zona-icono">🔒</div>
-        <div class="zona-nombre">
-          XMLs de Retenciones
-          <span class="badge-opcional">opcional</span>
-        </div>
-        <div class="zona-hint">ZIP o archivos .xml individuales</div>
-        <div class="zona-estado"></div>
-        <input type="file" id="input-retenciones" accept=".xml,.zip" multiple>
-      </div>
-
-      <!-- TXT del SRI -->
-      <div class="zona-drop" id="zona-txt">
-        <div class="zona-icono">📋</div>
-        <div class="zona-nombre">
-          <span class="tooltip-wrap">
-            TXT del Portal SRI
-            <span class="tooltip-text">
-              Descárgalo desde el portal SRI: <br>
-              Comprobantes Recibidos → Exportar.<br>
-              Sirve para detectar facturas sin XML.
-            </span>
-          </span>
-          <span class="badge-opcional">opcional</span>
-        </div>
-        <div class="zona-hint">Archivo .txt exportado del portal</div>
-        <div class="zona-estado"></div>
-        <input type="file" id="input-txt" accept=".txt">
-      </div>
-
-    </div>
-  </section>
-
-  <!-- PASO 2: Sistema Contable -->
-  <section class="seccion">
-    <div class="seccion-titulo">
-      <span class="num">2</span>
-      <h2>Sistema Contable</h2>
     </div>
 
-    <div class="zonas">
+    <!-- ── PANEL: AUDITORÍA MENSUAL ───────────────────────────────────────── -->
+    <div class="panel" id="panel-auditoria">
+      <h1 class="panel-titulo">📊 Auditoría Mensual</h1>
+      <p class="panel-subtitulo">Análisis completo: facturas + retenciones vs. sistema contable.</p>
 
-      <!-- ReporteComprasVentas (obligatorio) -->
-      <div class="zona-drop" id="zona-sistema" title="Reporte exportado desde tu sistema contable con las compras y ventas del mes">
-        <div class="zona-icono">📊</div>
-        <div class="zona-nombre">ReporteComprasVentas.xlsx</div>
-        <div class="zona-hint">Exportado desde tu sistema contable</div>
-        <div class="zona-estado"></div>
-        <input type="file" id="input-sistema" accept=".xlsx">
-      </div>
-
-      <!-- Ventas personalizado -->
-      <div class="zona-drop" id="zona-ventas">
-        <div class="zona-icono">💼</div>
-        <div class="zona-nombre">
-          <span class="tooltip-wrap">
-            Ventas_Personalizado.xlsx
-            <span class="tooltip-text">
-              Archivo Excel con tus facturas de venta que tienen retenciones.<br>
-              Columnas requeridas: NO_DOCUMENTO, RET_IVA_SIS, RET_IR_SIS.
-            </span>
-          </span>
-          <span class="badge-opcional">opcional</span>
-        </div>
-        <div class="zona-hint">Para comparar retenciones de ventas</div>
-        <div class="zona-estado"></div>
-        <input type="file" id="input-ventas" accept=".xlsx">
-      </div>
-
-    </div>
-  </section>
-
-  <!-- PASO 3: Analizar -->
-  <div class="accion">
-    <div id="procesando" style="display:none;flex-direction:column;align-items:center;gap:.8rem">
-      <div class="spinner"></div>
-      <p style="color:var(--subtext0);font-size:.9rem">Analizando… puede tardar unos segundos</p>
-    </div>
-    <button id="btn-analizar" disabled>Analizar</button>
-  </div>
-
-  <!-- Error -->
-  <div id="panel-error"></div>
-
-  <!-- Resultados -->
-  <section id="resultados">
-    <div class="resultados-header">
-      <h3>✓ Análisis completado</h3>
-      <button id="btn-descargar">⬇ Descargar Excel</button>
-    </div>
-
-    <div class="stats-grid">
-
-      <!-- Compras -->
-      <div class="stats-card">
-        <h4>Compras</h4>
-        <div class="stat-linea">
-          <span>XMLs descargados</span>
-          <span class="stat-valor normal" id="sc-xml">—</span>
-        </div>
-        <div class="stat-linea">
-          <span>En Sistema</span>
-          <span class="stat-valor normal" id="sc-sistema">—</span>
-        </div>
-        <div class="stat-linea">
-          <span>En TXT SRI</span>
-          <span class="stat-valor normal" id="sc-txt">—</span>
-        </div>
-        <div class="stat-linea">
-          <span>Coinciden en los 3</span>
-          <span class="stat-valor ok" id="sc-todos">—</span>
-        </div>
-        <div class="stat-linea">
-          <span>En SRI pero NO en Sistema</span>
-          <span class="stat-valor alerta" id="sc-falta">—</span>
-        </div>
-        <div class="stat-linea">
-          <span>Solo en Sistema (sin respaldo)</span>
-          <span class="stat-valor alerta" id="sc-extra">—</span>
+      <div class="seccion">
+        <h3 class="seccion-h">Archivos del SRI</h3>
+        <div class="zonas">
+          <div class="zona-drop" id="aud-facturas" data-tool="auditoria" data-tipo="facturas">
+            <div class="zona-icono">📄</div>
+            <div class="zona-nombre">XMLs de Facturas</div>
+            <div class="zona-hint">ZIP o archivos .xml</div>
+            <div class="zona-estado"></div>
+            <input type="file" id="inp-aud-facturas" accept=".xml,.zip" multiple>
+          </div>
+          <div class="zona-drop" id="aud-retenciones" data-tool="auditoria" data-tipo="retenciones">
+            <div class="zona-icono">🔒</div>
+            <div class="zona-nombre">XMLs de Retenciones <span class="badge-opc">opcional</span></div>
+            <div class="zona-hint">ZIP o archivos .xml</div>
+            <div class="zona-estado"></div>
+            <input type="file" id="inp-aud-retenciones" accept=".xml,.zip" multiple>
+          </div>
+          <div class="zona-drop" id="aud-txt" data-tool="auditoria" data-tipo="txt">
+            <div class="zona-icono">📋</div>
+            <div class="zona-nombre">TXT del Portal SRI <span class="badge-opc">opcional</span></div>
+            <div class="zona-hint">Comprobantes Recibidos → Exportar</div>
+            <div class="zona-estado"></div>
+            <input type="file" id="inp-aud-txt" accept=".txt">
+          </div>
         </div>
       </div>
 
-      <!-- Retenciones -->
-      <div class="stats-card">
-        <h4>Retenciones</h4>
-        <div class="stat-linea">
-          <span>XMLs de retención</span>
-          <span class="stat-valor normal" id="sr-xml">—</span>
-        </div>
-        <div class="stat-linea">
-          <span>Ventas con retención en Sistema</span>
-          <span class="stat-valor normal" id="sr-vp">—</span>
-        </div>
-        <div class="stat-linea">
-          <span>Coinciden</span>
-          <span class="stat-valor ok" id="sr-todos">—</span>
-        </div>
-        <div class="stat-linea">
-          <span>XML sin registro en Sistema</span>
-          <span class="stat-valor alerta" id="sr-falta">—</span>
-        </div>
-        <div class="stat-linea">
-          <span>Sistema sin XML de respaldo</span>
-          <span class="stat-valor alerta" id="sr-extra">—</span>
+      <div class="seccion">
+        <h3 class="seccion-h">Sistema Contable</h3>
+        <div class="zonas">
+          <div class="zona-drop" id="aud-sistema" data-tool="auditoria" data-tipo="sistema">
+            <div class="zona-icono">📊</div>
+            <div class="zona-nombre">ReporteComprasVentas.xlsx</div>
+            <div class="zona-hint">Exportado desde tu sistema contable</div>
+            <div class="zona-estado"></div>
+            <input type="file" id="inp-aud-sistema" accept=".xlsx">
+          </div>
+          <div class="zona-drop" id="aud-ventas" data-tool="auditoria" data-tipo="ventas">
+            <div class="zona-icono">💼</div>
+            <div class="zona-nombre">Ventas_Personalizado.xlsx <span class="badge-opc">opcional</span></div>
+            <div class="zona-hint">Facturas de venta con retenciones</div>
+            <div class="zona-estado"></div>
+            <input type="file" id="inp-aud-ventas" accept=".xlsx">
+          </div>
         </div>
       </div>
 
+      <div class="accion-wrap">
+        <div class="procesando" id="proc-auditoria" style="display:none">
+          <div class="spinner-sm"></div><span>Analizando…</span>
+        </div>
+        <button class="btn-accion azul" id="btn-auditoria" disabled>Analizar</button>
+      </div>
+      <div class="panel-error" id="err-auditoria"></div>
+      <div class="resultados" id="res-auditoria" style="display:none">
+        <div class="res-header">
+          <h3 class="res-ok">✓ Auditoría completada</h3>
+          <button class="btn-descarga" id="desc-auditoria">⬇ Descargar Excel</button>
+        </div>
+        <div class="stats-grid" id="stats-auditoria"></div>
+        <div class="advertencias" id="adv-auditoria" style="display:none"><ul></ul></div>
+      </div>
     </div>
 
-    <div id="advertencias">
-      <strong>Advertencias:</strong>
-      <ul></ul>
-    </div>
-  </section>
+    <!-- ── PANEL: SOLO COMPRAS ────────────────────────────────────────────── -->
+    <div class="panel" id="panel-compras">
+      <h1 class="panel-titulo">🛒 Revisar Compras</h1>
+      <p class="panel-subtitulo">Detecta facturas que no cuadran entre SRI y sistema contable.</p>
 
+      <div class="seccion">
+        <div class="zonas">
+          <div class="zona-drop" id="cmp-facturas" data-tool="compras" data-tipo="facturas">
+            <div class="zona-icono">📄</div>
+            <div class="zona-nombre">XMLs de Facturas</div>
+            <div class="zona-hint">ZIP o archivos .xml</div>
+            <div class="zona-estado"></div>
+            <input type="file" id="inp-cmp-facturas" accept=".xml,.zip" multiple>
+          </div>
+          <div class="zona-drop" id="cmp-sistema" data-tool="compras" data-tipo="sistema">
+            <div class="zona-icono">📊</div>
+            <div class="zona-nombre">ReporteComprasVentas.xlsx</div>
+            <div class="zona-hint">Exportado desde tu sistema contable</div>
+            <div class="zona-estado"></div>
+            <input type="file" id="inp-cmp-sistema" accept=".xlsx">
+          </div>
+          <div class="zona-drop" id="cmp-txt" data-tool="compras" data-tipo="txt">
+            <div class="zona-icono">📋</div>
+            <div class="zona-nombre">TXT del Portal SRI <span class="badge-opc">opcional</span></div>
+            <div class="zona-hint">Comprobantes Recibidos → Exportar</div>
+            <div class="zona-estado"></div>
+            <input type="file" id="inp-cmp-txt" accept=".txt">
+          </div>
+        </div>
+      </div>
+
+      <div class="accion-wrap">
+        <div class="procesando" id="proc-compras" style="display:none">
+          <div class="spinner-sm"></div><span>Analizando compras…</span>
+        </div>
+        <button class="btn-accion verde" id="btn-compras" disabled>Analizar Compras</button>
+      </div>
+      <div class="panel-error" id="err-compras"></div>
+      <div class="resultados" id="res-compras" style="display:none">
+        <div class="res-header">
+          <h3 class="res-ok">✓ Análisis de compras completado</h3>
+          <button class="btn-descarga" id="desc-compras">⬇ Descargar Excel</button>
+        </div>
+        <div class="stats-grid" id="stats-compras"></div>
+        <div class="advertencias" id="adv-compras" style="display:none"><ul></ul></div>
+      </div>
+    </div>
+
+    <!-- ── PANEL: SOLO RETENCIONES ───────────────────────────────────────── -->
+    <div class="panel" id="panel-retenciones">
+      <h1 class="panel-titulo">🔒 Revisar Retenciones</h1>
+      <p class="panel-subtitulo">Cruza las retenciones recibidas (XMLs) contra tu sistema.</p>
+
+      <div class="seccion">
+        <div class="zonas">
+          <div class="zona-drop" id="ret-retenciones" data-tool="retenciones" data-tipo="retenciones">
+            <div class="zona-icono">🔒</div>
+            <div class="zona-nombre">XMLs de Retenciones</div>
+            <div class="zona-hint">ZIP o archivos .xml</div>
+            <div class="zona-estado"></div>
+            <input type="file" id="inp-ret-retenciones" accept=".xml,.zip" multiple>
+          </div>
+          <div class="zona-drop" id="ret-ventas" data-tool="retenciones" data-tipo="ventas">
+            <div class="zona-icono">💼</div>
+            <div class="zona-nombre">Ventas_Personalizado.xlsx</div>
+            <div class="zona-hint">Facturas de venta con retenciones registradas</div>
+            <div class="zona-estado"></div>
+            <input type="file" id="inp-ret-ventas" accept=".xlsx">
+          </div>
+        </div>
+      </div>
+
+      <div class="accion-wrap">
+        <div class="procesando" id="proc-retenciones" style="display:none">
+          <div class="spinner-sm"></div><span>Analizando retenciones…</span>
+        </div>
+        <button class="btn-accion mauve" id="btn-retenciones" disabled>Analizar Retenciones</button>
+      </div>
+      <div class="panel-error" id="err-retenciones"></div>
+      <div class="resultados" id="res-retenciones" style="display:none">
+        <div class="res-header">
+          <h3 class="res-ok">✓ Análisis de retenciones completado</h3>
+          <button class="btn-descarga" id="desc-retenciones">⬇ Descargar Excel</button>
+        </div>
+        <div class="stats-grid" id="stats-retenciones"></div>
+        <div class="advertencias" id="adv-retenciones" style="display:none"><ul></ul></div>
+      </div>
+    </div>
+
+    <!-- ── PANEL: ORGANIZAR PDFs ─────────────────────────────────────────── -->
+    <div class="panel" id="panel-pdfs">
+      <h1 class="panel-titulo">📁 Organizar PDFs</h1>
+      <p class="panel-subtitulo">
+        Sube un ZIP que contenga los XMLs y PDFs juntos. VOITHOS renombra los PDFs
+        con el número oficial del comprobante y te devuelve un ZIP organizado.
+      </p>
+
+      <div class="seccion">
+        <div class="zonas">
+          <div class="zona-drop" id="pdf-facturas" data-tool="pdfs" data-tipo="facturas">
+            <div class="zona-icono">📦</div>
+            <div class="zona-nombre">ZIP Facturas <span class="badge-opc">opcional</span></div>
+            <div class="zona-hint">ZIP con XMLs + PDFs de facturas</div>
+            <div class="zona-estado"></div>
+            <input type="file" id="inp-pdf-facturas" accept=".zip,.xml" multiple>
+          </div>
+          <div class="zona-drop" id="pdf-retenciones" data-tool="pdfs" data-tipo="retenciones">
+            <div class="zona-icono">📦</div>
+            <div class="zona-nombre">ZIP Retenciones <span class="badge-opc">opcional</span></div>
+            <div class="zona-hint">ZIP con XMLs + PDFs de retenciones</div>
+            <div class="zona-estado"></div>
+            <input type="file" id="inp-pdf-retenciones" accept=".zip,.xml" multiple>
+          </div>
+        </div>
+      </div>
+
+      <div class="accion-wrap">
+        <div class="procesando" id="proc-pdfs" style="display:none">
+          <div class="spinner-sm"></div><span>Renombrando PDFs…</span>
+        </div>
+        <button class="btn-accion peach" id="btn-pdfs" disabled>Organizar PDFs</button>
+      </div>
+      <div class="panel-error" id="err-pdfs"></div>
+      <div class="resultados" id="res-pdfs" style="display:none">
+        <div class="res-header">
+          <h3 class="res-ok">✓ PDFs organizados</h3>
+        </div>
+        <div id="pdf-descargas"></div>
+        <div class="advertencias" id="adv-pdfs" style="display:none"><ul></ul></div>
+      </div>
+    </div>
+
+  </main>
 </div><!-- #app -->
 
 <script src="js/app.js"></script>
