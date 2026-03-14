@@ -2,19 +2,8 @@
 const PYODIDE_URL = 'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/';
 const TMP         = '/tmp/voithos';
 
-const MODULOS_PYTHON = [
-  'config.py',
-  'util/__init__.py', 'util/normalizacion.py', 'util/validacion.py',
-  'util/logger.py',   'util/archivos.py',
-  'parsers/__init__.py', 'parsers/facturas_xml.py',
-  'parsers/retenciones_xml.py', 'parsers/sri_txt.py',
-  'loaders/__init__.py', 'loaders/sistema_excel.py',
-  'loaders/ventas_personalizado.py',
-  'comparadores/__init__.py', 'comparadores/comparar_compras.py',
-  'comparadores/comparar_retenciones.py',
-  'reportes/__init__.py', 'reportes/generar_excel.py',
-  'voithos_web.py',
-];
+// Módulos Python empaquetados en un JSON único (evita bloqueos de .py en itch.io)
+const BUNDLE_URL = 'py_bundle.json';
 
 // ── Estado por herramienta ────────────────────────────────────────────────────
 const archivos = {
@@ -68,14 +57,16 @@ function setProgreso(msg, pct) {
 }
 
 async function cargarModulosPython() {
+  const resp = await fetch(BUNDLE_URL);
+  if (!resp.ok) throw new Error(`No se pudo cargar ${BUNDLE_URL} (${resp.status})`);
+  const bundle = await resp.json();
+
   const subdirs = ['parsers', 'loaders', 'comparadores', 'reportes', 'util'];
   for (const d of subdirs) {
     try { pyodide.FS.mkdir(`/home/pyodide/${d}`); } catch (_) {}
   }
-  for (const mod of MODULOS_PYTHON) {
-    const resp = await fetch(`py/${mod}`);
-    if (!resp.ok) throw new Error(`No se pudo cargar py/${mod} (${resp.status})`);
-    pyodide.FS.writeFile(`/home/pyodide/${mod}`, await resp.text(), { encoding: 'utf8' });
+  for (const [ruta, contenido] of Object.entries(bundle)) {
+    pyodide.FS.writeFile(`/home/pyodide/${ruta}`, contenido, { encoding: 'utf8' });
   }
 }
 
